@@ -9,7 +9,6 @@ class MeetupController {
     const { page = 1 } = req.query;
 
     const meetups = await Meetup.findAll({
-      where: { user_id: req.userId },
       order: ['date_time'],
       limit: 20,
       offset: (page - 1) * 20,
@@ -61,6 +60,34 @@ class MeetupController {
     }
 
     return res.json(meetup);
+  }
+
+  async showUserMeetups(req, res) {
+    const { page = 1 } = req.query;
+
+    const meetups = await Meetup.findAll({
+      where: { user_id: req.userId },
+      order: ['date_time'],
+      limit: 20,
+      offset: (page - 1) * 20,
+      attributes: {
+        exclude: ['user_id', 'banner_id'],
+      },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name'],
+        },
+        {
+          model: File,
+          as: 'banner',
+          attributes: ['id', 'path', 'url'],
+        },
+      ],
+    });
+
+    return res.json(meetups);
   }
 
   async store(req, res) {
@@ -144,6 +171,12 @@ class MeetupController {
     if (!meetup) {
       return res.status(404).json({
         error: "This meetup doesn't exist anymore",
+      });
+    }
+
+    if (meetup.date_time <= new Date()) {
+      return res.status(401).json({
+        error: "You can only cancel meetups that didn't happen",
       });
     }
 
